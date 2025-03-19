@@ -53,6 +53,28 @@ async def on_ready():
     else:
         logging.warning("❌ Channel not found or bot lacks access")
 
+        @bot.command(name="createtext")
+        async def create_text_channel(ctx, channel_name: str):
+            """Creates a new text channel with the specified name"""
+            try:
+                guild = ctx.guild  # Get the server (guild)
+                existing_channel = discord.utils.get(guild.channels, name=channel_name)
+
+                if existing_channel:
+                    await ctx.send(f"❌ A channel named #{channel_name} already exists!")
+                else:
+                    new_channel = await guild.create_text_channel(channel_name)
+                    await ctx.send(f"✅ Text channel **#{new_channel.name}** created successfully!")
+                    logging.info(f"Created text channel: #{new_channel.name}")
+
+            except discord.Forbidden:
+                await ctx.send("❌ I don't have permission to create channels!")
+                logging.error("Bot lacks permission to create channels.")
+
+            except Exception as e:
+                await ctx.send(f"❌ Error creating channel: {str(e)}")
+                logging.error(f"Error creating text channel: {str(e)}")
+
 
 # Simple ping command (no owner restriction)
 @bot.command(name="ping")
