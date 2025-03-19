@@ -17,15 +17,21 @@ async def on_ready():
     print(f'{bot.user} has connected to Discord!')
 
 # Check for admin role
-def is_admin():
+def is_owner():
     def predicate(ctx):
-        # Check if user has a role named "Admin"
-        return any(role.name.lower() == "admin" for role in ctx.author.roles)
+        # Allow only the specified user ID to run the command
+        return ctx.author.id == 274753853516283905
     return commands.check(predicate)
+
+@bot.command(name="testowner")
+@is_owner()
+async def test_owner(ctx):
+    await ctx.send("✅ You have permission to use owner-only commands!")
+
 
 # Role creation command
 @bot.command(name='createrole')
-@is_admin()
+@is_owner()
 async def create_role(ctx, role_name: str):
     """Creates a new role with the specified name"""
     try:
@@ -36,7 +42,7 @@ async def create_role(ctx, role_name: str):
 
 # Role deletion command
 @bot.command(name='delrole')
-@is_admin()
+@is_owner()
 async def delete_role(ctx, role: discord.Role):
     """Deletes the specified role"""
     try:
@@ -47,7 +53,7 @@ async def delete_role(ctx, role: discord.Role):
 
 # Role color change command
 @bot.command(name='rolecolor')
-@is_admin()
+@is_owner()
 async def change_role_color(ctx, role: discord.Role, color_hex: str):
     """Changes the color of a specified role (use hex code like #FF0000)"""
     try:
@@ -63,7 +69,7 @@ async def change_role_color(ctx, role: discord.Role, color_hex: str):
 
 # Text channel creation command
 @bot.command(name='createtext')
-@is_admin()
+@is_owner()
 async def create_text_channel(ctx, channel_name: str):
     """Creates a new text channel with the specified name"""
     try:
@@ -74,7 +80,7 @@ async def create_text_channel(ctx, channel_name: str):
 
 # Text channel deletion command
 @bot.command(name='deltext')
-@is_admin()
+@is_owner()
 async def delete_text_channel(ctx, channel: discord.TextChannel):
     """Deletes the specified text channel"""
     try:
@@ -85,7 +91,7 @@ async def delete_text_channel(ctx, channel: discord.TextChannel):
 
 # Voice channel creation command
 @bot.command(name='createvoice')
-@is_admin()
+@is_owner()
 async def create_voice_channel(ctx, channel_name: str):
     """Creates a new voice channel with the specified name"""
     try:
@@ -96,7 +102,7 @@ async def create_voice_channel(ctx, channel_name: str):
 
 # Voice channel deletion command
 @bot.command(name='delvoice')
-@is_admin()
+@is_owner()
 async def delete_voice_channel(ctx, channel: discord.VoiceChannel):
     """Deletes the specified voice channel"""
     try:
