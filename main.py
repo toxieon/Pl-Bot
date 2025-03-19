@@ -1,128 +1,79 @@
 import discord
 from discord.ext import commands
 import os
-import webserver
+import logging
+from threading import Thread
+from flask import Flask
 
-# Load environment variables
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+
+# Flask app to keep the bot alive on Render
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "Discord Bot OK"
+
+def run_flask():
+    app.run(host='0.0.0.0', port=8080)
+
+def keep_alive():
+    t = Thread(target=run_flask)
+    t.start()
+
+# Bot setup
 TOKEN = os.environ['DISCORDKEY']
-
-# Set up bot with command prefix and intents
 intents = discord.Intents.default()
-intents.members = True  # Needed for role management
-bot = commands.Bot(command_prefix='-', intents=intents)
+intents.members = True  # For role management
+intents.message_content = True  # Needed for command processing
+bot = commands.Bot(command_prefix='!', intents=intents)
 
-# Event to show when bot is ready
+# Event when bot is ready
 @bot.event
 async def on_ready():
+    logging.info("Bot is live")  # Prints to Render logs
+    # Send "Bot is live" to a specific channel
+    channel = bot.get_channel(YOUR_CHANNEL_ID_HERE)  # Replace with your channel ID
+    if channel:
+        try:
+            await channel.send("Bot is live")
+            logging.info(f"Sent 'Bot is live' to channel {channel.name}")
+        except Exception as e:
+            logging.error(f"Failed to send message to channel: {str(e)}")
+    else:
+        logging.warning("Channel not found or bot lacks access")
     print(f'{bot.user} has connected to Discord!')
 
-# Check for admin role
+# Simple ping command (no owner restriction)
+@bot.command(name="ping")
+async def ping(ctx):
+    """Responds with Pong! to test if bot is working"""
+    await ctx.send("Pong!")
+    logging.info("Ping command executed")
+
+# Owner-only command example
 def is_owner():
     def predicate(ctx):
-        # Allow only the specified user ID to run the command
-        return ctx.author.id == 274753853516283905
+        return ctx.author.id == 274753853516283905  # Replace with your ID if needed
     return commands.check(predicate)
 
 @bot.command(name="testowner")
-#@is_owner()
+@is_owner()
 async def test_owner(ctx):
     await ctx.send("✅ You have permission to use owner-only commands!")
 
-
-# Role creation command
-@bot.command(name='createrole')
-#@is_owner()
-async def create_role(ctx, role_name: str):
-    """Creates a new role with the specified name"""
-    try:
-        await ctx.guild.create_role(name=role_name)
-        await ctx.send(f'✅ Role "{role_name}" created successfully!')
-    except Exception as e:
-        await ctx.send(f'❌ Error creating role: {str(e)}')
-
-# Role deletion command
-@bot.command(name='delrole')
-#@is_owner()
-async def delete_role(ctx, role: discord.Role):
-    """Deletes the specified role"""
-    try:
-        await role.delete()
-        await ctx.send(f'✅ Role "{role.name}" deleted successfully!')
-    except Exception as e:
-        await ctx.send(f'❌ Error deleting role: {str(e)}')
-
-# Role color change command
-@bot.command(name='rolecolor')
-#@is_owner()
-async def change_role_color(ctx, role: discord.Role, color_hex: str):
-    """Changes the color of a specified role (use hex code like #FF0000)"""
-    try:
-        # Remove # if present and convert hex to integer
-        color_hex = color_hex.replace('#', '')
-        color = discord.Color(int(color_hex, 16))
-        await role.edit(color=color)
-        await ctx.send(f'✅ Color updated for role "{role.name}"!')
-    except ValueError:
-        await ctx.send('❌ Please use a valid hex color code (e.g., #FF0000 for red)')
-    except Exception as e:
-        await ctx.send(f'❌ Error changing color: {str(e)}')
-
-# Text channel creation command
-@bot.command(name='createtext')
-#@is_owner()
-async def create_text_channel(ctx, channel_name: str):
-    """Creates a new text channel with the specified name"""
-    try:
-        await ctx.guild.create_text_channel(channel_name)
-        await ctx.send(f'✅ Text channel "{channel_name}" created successfully!')
-    except Exception as e:
-        await ctx.send(f'❌ Error creating text channel: {str(e)}')
-
-# Text channel deletion command
-@bot.command(name='deltext')
-#@is_owner()
-async def delete_text_channel(ctx, channel: discord.TextChannel):
-    """Deletes the specified text channel"""
-    try:
-        await channel.delete()
-        await ctx.send(f'✅ Text channel "{channel.name}" deleted successfully!')
-    except Exception as e:
-        await ctx.send(f'❌ Error deleting text channel: {str(e)}')
-
-# Voice channel creation command
-@bot.command(name='createvoice')
-#@is_owner()
-async def create_voice_channel(ctx, channel_name: str):
-    """Creates a new voice channel with the specified name"""
-    try:
-        await ctx.guild.create_voice_channel(channel_name)
-        await ctx.send(f'✅ Voice channel "{channel_name}" created successfully!')
-    except Exception as e:
-        await ctx.send(f'❌ Error creating voice channel: {str(e)}')
-
-# Voice channel deletion command
-@bot.command(name='delvoice')
-#@is_owner()
-async def delete_voice_channel(ctx, channel: discord.VoiceChannel):
-    """Deletes the specified voice channel"""
-    try:
-        await channel.delete()
-        await ctx.send(f'✅ Voice channel "{channel.name}" deleted successfully!')
-    except Exception as e:
-        await ctx.send(f'❌ Error deleting voice channel: {str(e)}')
-
-# Error handling for missing permissions
+# Error handling
 @bot.event
 async def on_command_error(ctx, error):
+    logging.error(f"Command error: {str(error)}")
     if isinstance(error, commands.CheckFailure):
-        await ctx.send('❌ You need the Admin role to use this command!')
+        await ctx.send("❌ You don’t have permission to use this command!")
     elif isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send('❌ Please provide all required arguments!')
+        await ctx.send("❌ Please provide all required arguments!")
     else:
-        await ctx.send(f'❌ An error occurred: {str(error)}')
+        await ctx.send(f"❌ An error occurred: {str(error)}")
 
-
-# webserver
-webserver.keep_alive()
-# Run the bot
+# Start the web server and bot
+keep_alive()
 bot.run(TOKEN)
